@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spear-mcp"
+version = "0.0.1"
+requires-python = ">=3.13"
+
+dependencies = [
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.12.13",
+    "async-lru>=2.0.5",
+    "cartopy>=0.25.0",
+    "cftime>=1.6.4.post1",
+    "fastmcp>=2.10.1",
+    "loguru>=0.7.3",
+    "matplotlib>=3.10.5",
+    "netcdf4>=1.7.2",
+    "numpy>=2.2.6",
+    "pillow>=11.3.0",
+    "pydantic>=2.11.7",
+    "pydap>=3.5.5",
+    "pytest-asyncio>=1.0.0",
+    "xarray>=2025.6.1",
+    "s3fs>=2023.1.0",
+    "h5netcdf>=1.6.4",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.0",
+  "ruff>=0.11.12",
+]
+
+[project.scripts]
+spear-mcp = "spear_mcp:main"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spear_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = [
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "C4", "UP", "PL", "RUF"]
+ignore = ["PLR2004", "PLR0912", "PLR0913", "B028"]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["analysis_setup", "src"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "F403", "F405"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
