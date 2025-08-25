@@ -1,7 +1,7 @@
-# spear-mcp-test
-MCP serve for accessing SPEAR climate output.
+# Local Install
+MCP server for accessing SPEAR climate output.
 
-How to configure in LLM JSON file:
+Configuration in LLM JSON file:
 ```python
 {
   "mcpServers": {
