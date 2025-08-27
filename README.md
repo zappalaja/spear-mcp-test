@@ -6,7 +6,7 @@ To download Claude desktop, follow the instructions from this link:
 
 https://claude.ai/download
 
-Once Claude desktop is install, go to the settings and proceed to the 'Developer' section. Click 'Edit config' and insert the correct form of the 'Local Install' into the 'claude_desktop_config.json'.
+Once Claude desktop is installed, go to the settings and proceed to the 'Developer' section. Click 'Edit config' and insert the correct form of the 'Local Install' into the 'claude_desktop_config.json'.
 
 # Local Install
 
