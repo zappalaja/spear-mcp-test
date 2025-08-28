@@ -1,6 +1,7 @@
-# Model Context Protocol (MCP) Server for Accessing NOAA-SPEAR Climate Model Output
+#  Model Context Protocol (MCP) Test Server for Accessing SPEAR Model Output
 An MCP is a standarized form of two-way communication for connecting AI applications to external services, devices and databases.
-This MCP server is designed for accessing NOAA SPEAR output. It has been created and testing using Claude Desktop.
+This test MCP server is designed for accessing SPEAR output. It has been created and being tested using Claude Desktop.
+This is not intended for operational purposes. Contact through GitHub issues for questions. 
 
 To download Claude Desktop, follow the instructions from this link:
 
