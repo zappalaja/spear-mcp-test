@@ -124,7 +124,7 @@ async def create_server() -> FastMCP:
     Example: get_s3_file_metadata_only("scenarioSSP5-85", "r15i1p1f1", "Amon", "pr")
     """
     # Future Tools! Coming soon!
-    # mcp.tool()(tools_nc.get_PPan_file_metadata_only)
+    # mcp.tool()(tools_nc.get_catalog_file_metadata_only)
 
 
 ##############################################################################################
