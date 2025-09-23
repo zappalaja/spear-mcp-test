@@ -24,6 +24,6 @@ Configuration in LLM JSON file:
         "spear-mcp"
       ]
     }
-  },
+  }
 }
 ```
