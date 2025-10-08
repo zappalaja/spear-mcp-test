@@ -24,7 +24,7 @@ import os
 import json
 
 # Root mount path (read-only)
-MOUNT_ROOT = "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
+MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
 
 
 def _clean_local_path(subpath: str) -> str:
