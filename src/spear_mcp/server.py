@@ -6,7 +6,7 @@ from loguru import logger
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from . import tools_local  # NEW: Use local-only tools
+from . import tools  # NEW: Use local-only tools
 
 
 async def create_server() -> FastMCP:
@@ -14,9 +14,9 @@ async def create_server() -> FastMCP:
     mcp = FastMCP("MCP Server for Local NetCDF Directory (Read-Only)")
 
     # Register local-only tools
-    mcp.tool()(tools_local.list_local_directory)
-    mcp.tool()(tools_local.load_netcdf_metadata)
-    mcp.tool()(tools_local.load_netcdf_variable)
+    mcp.tool()(tools.list_local_directory)
+    mcp.tool()(tools.load_netcdf_metadata)
+    mcp.tool()(tools.load_netcdf_variable)
 
     # Health endpoint for container / pod monitoring
     @mcp.custom_route("/health", methods=["GET"])
