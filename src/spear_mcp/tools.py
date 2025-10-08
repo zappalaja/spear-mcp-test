@@ -1,27 +1,17 @@
 """MCP server tools for dynamic SPEAR public AWS portal navigation - NC File Reading is handled in 'tools_nc.py'"""
 
 import asyncio
-import calendar
-from typing import Annotated, List, Dict, Optional, Tuple, Union, Any
-from urllib.parse import quote, urlparse, urljoin
+import os
 import warnings
-warnings.filterwarnings('ignore')
-
-import aiohttp
 import numpy as np
 import pandas as pd
 import xarray as xr
 from async_lru import alru_cache
 from loguru import logger
-from pydantic import Field, HttpUrl
 import cftime
-from bs4 import BeautifulSoup
-import re
-import logging
+from typing import Optional, List, Dict, Any
 
-import tempfile
-import os
-import json
+warnings.filterwarnings("ignore")
 
 # Root mount path (read-only)
 MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
@@ -35,6 +25,24 @@ def _clean_local_path(subpath: str) -> str:
     if not abs_path.startswith(MOUNT_ROOT):
         raise ValueError("Path traversal outside allowed root is not permitted.")
     return abs_path
+
+
+def safe_serialize(val):
+    """Convert NumPy, datetime, cftime, and complex types to JSON-safe values."""
+    if isinstance(val, (np.generic, np.bool_)):
+        return val.item()
+    elif isinstance(val, np.ndarray):
+        return val.tolist()
+    elif isinstance(val, (pd.Timestamp, np.datetime64)):
+        return str(val)
+    elif isinstance(val, (cftime.DatetimeNoLeap, cftime.datetime)):
+        return str(val)
+    elif isinstance(val, (list, tuple)):
+        return [safe_serialize(v) for v in val]
+    elif isinstance(val, dict):
+        return {str(k): safe_serialize(v) for k, v in val.items()}
+    else:
+        return val
 
 
 async def list_local_directory(subpath: str = "") -> Dict[str, Any]:
@@ -76,15 +84,14 @@ async def load_netcdf_metadata(subpath: str) -> Dict[str, Any]:
         raise ValueError("File is not a valid .nc file.")
 
     logger.info(f"Loading metadata from: {full_path}")
-
     ds = await asyncio.to_thread(xr.open_dataset, full_path, decode_cf=True)
 
     return {
         "filename": os.path.basename(full_path),
-        "dimensions": dict(ds.dims),
+        "dimensions": {k: int(v) for k, v in ds.dims.items()},
         "variables": list(ds.data_vars.keys()),
         "coords": list(ds.coords.keys()),
-        "attrs": dict(ds.attrs),
+        "attrs": safe_serialize(ds.attrs),
     }
 
 
@@ -131,6 +138,6 @@ async def load_netcdf_variable(
         "variable": variable,
         "shape": list(var_data.shape),
         "dims": list(var_data.dims),
-        "attrs": dict(var_data.attrs),
-        "data_sample": var_data.values.tolist()[:1]  # Only 1st slice for safety
+        "attrs": safe_serialize(dict(var_data.attrs)),
+        "data_sample": safe_serialize(var_data.values.tolist()[:1])
     }
