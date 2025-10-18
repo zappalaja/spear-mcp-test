@@ -1,7 +1,6 @@
-"""MCP server tools for dynamic SPEAR public AWS portal navigation - NC File Reading is handled in 'tools_nc.py'"""
+"""MCP server tools for dynamic web-based SPEAR portal navigation and NetCDF inspection."""
 
 import asyncio
-import os
 import warnings
 import numpy as np
 import pandas as pd
@@ -10,22 +9,14 @@ from async_lru import alru_cache
 from loguru import logger
 import cftime
 from typing import Optional, List, Dict, Any
+import aiohttp
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 warnings.filterwarnings("ignore")
 
-# Root mount path (read-only)
-# MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
-MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/CMIP/NOAA-GFDL/GFDL-SPEAR-MED/historical"
-
-
-def _clean_local_path(subpath: str) -> str:
-    """Sanitize and ensure subpath stays inside the mount root."""
-    clean = os.path.normpath(subpath).lstrip("./")
-    full_path = os.path.join(MOUNT_ROOT, clean)
-    abs_path = os.path.abspath(full_path)
-    if not abs_path.startswith(MOUNT_ROOT):
-        raise ValueError("Path traversal outside allowed root is not permitted.")
-    return abs_path
+# Base URL for the web portal (localhost or remote)
+BASE_URL = "http://localhost:8000"
 
 
 def safe_serialize(val):
@@ -46,49 +37,115 @@ def safe_serialize(val):
         return val
 
 
-async def list_local_directory(subpath: str = "") -> Dict[str, Any]:
-    """List directories and .nc files within a subpath from the root."""
-    full_path = _clean_local_path(subpath)
-    logger.info(f"Browsing local directory: {full_path}")
+# ---------------------------------------------------------------------------
+# Web Navigation Tools
+# ---------------------------------------------------------------------------
 
-    if not os.path.exists(full_path):
-        raise FileNotFoundError(f"Path does not exist: {full_path}")
+async def fetch_page(session, url: str) -> str:
+    async with session.get(url) as response:
+        response.raise_for_status()
+        return await response.text()
 
-    directories = []
-    netcdf_files = []
 
-    for item in os.listdir(full_path):
-        item_path = os.path.join(full_path, item)
-        if os.path.isdir(item_path):
-            directories.append(item)
-        elif os.path.isfile(item_path) and item.endswith(".nc"):
-            netcdf_files.append(item)
+async def navigate_web_portal(subpath: str = "") -> Dict[str, Any]:
+    """
+    Browse a webpage under BASE_URL.
+    Returns page title, visible links, .nc file links, and short text preview.
+    """
+    url = urljoin(BASE_URL + "/", subpath)
+    if not url.startswith(BASE_URL):
+        raise ValueError("Navigation outside the base URL is not permitted.")
 
-    parent = os.path.relpath(os.path.dirname(full_path), MOUNT_ROOT)
-    if parent == ".":
-        parent = None
+    logger.info(f"Navigating web portal: {url}")
 
-    return {
-        "current_path": os.path.relpath(full_path, MOUNT_ROOT),
-        "directories": sorted(directories),
-        "netcdf_files": sorted(netcdf_files),
-        "parent_path": parent
-    }
+    async with aiohttp.ClientSession() as session:
+        html = await fetch_page(session, url)
+        soup = BeautifulSoup(html, "html.parser")
 
+        links = []
+        for a in soup.find_all("a", href=True):
+            href = urljoin(url, a["href"])
+            if href.startswith(BASE_URL):
+                links.append(href)
+
+        title = soup.title.string if soup.title else None
+        paragraphs = [p.get_text(strip=True) for p in soup.find_all("p")]
+        preview = " ".join(paragraphs[:3])[:500]
+
+        nc_links = [link for link in links if link.endswith(".nc")]
+
+        return {
+            "url": url,
+            "title": title,
+            "links": sorted(set(links)),
+            "netcdf_links": sorted(set(nc_links)),
+            "text_preview": preview,
+        }
+
+
+async def fetch_link_content(link: str) -> Dict[str, Any]:
+    """
+    Fetch and summarize the content from a given link within the allowed base URL.
+    If the link is a .nc file, basic header info is returned.
+    """
+    url = urljoin(BASE_URL + "/", link)
+    if not url.startswith(BASE_URL):
+        raise ValueError("Access outside the base URL is not permitted.")
+
+    logger.info(f"Fetching link content: {url}")
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+
+            content_type = response.headers.get("Content-Type", "")
+            if "text/html" in content_type:
+                html = await response.text()
+                soup = BeautifulSoup(html, "html.parser")
+                title = soup.title.string if soup.title else None
+                text = " ".join(p.get_text(strip=True) for p in soup.find_all("p"))[:1000]
+                return {
+                    "url": url,
+                    "type": "html",
+                    "title": title,
+                    "text_excerpt": text
+                }
+
+            elif url.endswith(".nc"):
+                return {
+                    "url": url,
+                    "type": "netcdf",
+                    "message": "NetCDF file link detected. Use NetCDF tools to load metadata or variables."
+                }
+
+            else:
+                size = response.headers.get("Content-Length")
+                return {
+                    "url": url,
+                    "type": "binary",
+                    "size_bytes": int(size) if size else None,
+                    "message": "Binary or non-HTML file available for download."
+                }
+
+
+# ---------------------------------------------------------------------------
+# NetCDF Metadata & Variable Loading (from HTTP)
+# ---------------------------------------------------------------------------
 
 @alru_cache(maxsize=8, ttl=3600)
-async def load_netcdf_metadata(subpath: str) -> Dict[str, Any]:
-    """Load only the metadata of a NetCDF file."""
-    full_path = _clean_local_path(subpath)
+async def load_netcdf_metadata(file_url: str) -> Dict[str, Any]:
+    """
+    Load only the metadata of a NetCDF file from the web portal via HTTP.
+    """
+    url = urljoin(BASE_URL + "/", file_url)
+    if not url.startswith(BASE_URL):
+        raise ValueError("Access outside the base URL is not permitted.")
 
-    if not os.path.isfile(full_path) or not full_path.endswith(".nc"):
-        raise ValueError("File is not a valid .nc file.")
-
-    logger.info(f"Loading metadata from: {full_path}")
-    ds = await asyncio.to_thread(xr.open_dataset, full_path, decode_cf=True)
+    logger.info(f"Loading NetCDF metadata from: {url}")
+    ds = await asyncio.to_thread(xr.open_dataset, url, engine="netcdf4", decode_cf=True)
 
     return {
-        "filename": os.path.basename(full_path),
+        "url": url,
         "dimensions": {k: int(v) for k, v in ds.dims.items()},
         "variables": list(ds.data_vars.keys()),
         "coords": list(ds.coords.keys()),
@@ -98,24 +155,25 @@ async def load_netcdf_metadata(subpath: str) -> Dict[str, Any]:
 
 @alru_cache(maxsize=8, ttl=1800)
 async def load_netcdf_variable(
-    subpath: str,
+    file_url: str,
     variable: str,
     time_start: Optional[int] = None,
     time_end: Optional[int] = None,
     lat_slice: Optional[List[float]] = None,
     lon_slice: Optional[List[float]] = None
 ) -> Dict[str, Any]:
-    """Load a subset of a variable from a NetCDF file using nearest-match slicing."""
-    full_path = _clean_local_path(subpath)
+    """
+    Load a subset of a variable from a NetCDF file served via HTTP.
+    """
+    url = urljoin(BASE_URL + "/", file_url)
+    if not url.startswith(BASE_URL):
+        raise ValueError("Access outside the base URL is not permitted.")
 
-    if not os.path.isfile(full_path) or not full_path.endswith(".nc"):
-        raise ValueError("File is not a valid .nc file.")
-
-    logger.info(f"Loading data: {variable} from {full_path}")
-    ds = await asyncio.to_thread(xr.open_dataset, full_path, decode_cf=True)
+    logger.info(f"Loading variable '{variable}' from remote dataset: {url}")
+    ds = await asyncio.to_thread(xr.open_dataset, url, engine="netcdf4", decode_cf=True)
 
     if variable not in ds.data_vars:
-        raise ValueError(f"Variable '{variable}' not found in file.")
+        raise ValueError(f"Variable '{variable}' not found in dataset.")
 
     var_data = ds[variable]
 
@@ -127,18 +185,21 @@ async def load_netcdf_variable(
         lat_vals = ds['lat'].values
         lat_index_start = int(pd.Series(lat_vals).sub(lat_slice[0]).abs().idxmin())
         lat_index_end = int(pd.Series(lat_vals).sub(lat_slice[1]).abs().idxmin())
-        var_data = var_data.isel(lat=slice(min(lat_index_start, lat_index_end), max(lat_index_start, lat_index_end) + 1))
+        var_data = var_data.isel(lat=slice(min(lat_index_start, lat_index_end),
+                                           max(lat_index_start, lat_index_end) + 1))
 
     if lon_slice and 'lon' in var_data.coords:
         lon_vals = ds['lon'].values
         lon_index_start = int(pd.Series(lon_vals).sub(lon_slice[0]).abs().idxmin())
         lon_index_end = int(pd.Series(lon_vals).sub(lon_slice[1]).abs().idxmin())
-        var_data = var_data.isel(lon=slice(min(lon_index_start, lon_index_end), max(lon_index_start, lon_index_end) + 1))
+        var_data = var_data.isel(lon=slice(min(lon_index_start, lon_index_end),
+                                           max(lon_index_start, lon_index_end) + 1))
 
     return {
+        "url": url,
         "variable": variable,
         "shape": list(var_data.shape),
         "dims": list(var_data.dims),
         "attrs": safe_serialize(dict(var_data.attrs)),
-        "data_sample": safe_serialize(var_data.values.tolist()[:1])
+        "data_sample": safe_serialize(var_data.values.tolist()[:1]),
     }
