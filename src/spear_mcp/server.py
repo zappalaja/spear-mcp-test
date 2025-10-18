@@ -14,7 +14,8 @@ async def create_server() -> FastMCP:
     mcp = FastMCP("MCP Server for Local NetCDF Directory (Read-Only)")
 
     # Register local-only tools
-    mcp.tool()(tools.list_local_directory)
+    mcp.tool()(tools.navigate_web_portal)
+    mcp.tool()(tools.fetch_link_content)
     mcp.tool()(tools.load_netcdf_metadata.__wrapped__)
     mcp.tool()(tools.load_netcdf_variable.__wrapped__)
 
