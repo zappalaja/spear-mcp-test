@@ -14,7 +14,8 @@ from typing import Optional, List, Dict, Any
 warnings.filterwarnings("ignore")
 
 # Root mount path (read-only)
-MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
+# MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/TFTEST"
+MOUNT_ROOT = "/workspace/data/2/GFDL-LARGE-ENSEMBLES/CMIP/NOAA-GFDL/GFDL-SPEAR-MED/historical"
 
 
 def _clean_local_path(subpath: str) -> str:
