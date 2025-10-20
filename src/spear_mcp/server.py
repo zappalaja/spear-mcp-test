@@ -6,18 +6,21 @@ from loguru import logger
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from . import tools  # NEW: Use local-only tools
+from . import tools  # New STAC + NetCDF tools
 
 
 async def create_server() -> FastMCP:
-    """Create and configure the MCP server and register local tools."""
-    mcp = FastMCP("MCP Server for Local NetCDF Directory (Read-Only)")
+    """Create and configure the MCP server and register STAC-aware tools."""
+    mcp = FastMCP("SPEAR STAC MCP Server")
 
-    # Register local-only tools
-    mcp.tool()(tools.navigate_web_portal)
-    mcp.tool()(tools.fetch_link_content)
+    # Register primary conversational tools
+    mcp.tool()(tools.query_stac)
     mcp.tool()(tools.load_netcdf_metadata.__wrapped__)
     mcp.tool()(tools.load_netcdf_variable.__wrapped__)
+
+    # Optional helpers for manual browsing or debugging
+    # mcp.tool()(tools.list_stac_items)
+    # mcp.tool()(tools.get_stac_item_assets)
 
     # Health endpoint for container / pod monitoring
     @mcp.custom_route("/health", methods=["GET"])
@@ -28,13 +31,15 @@ async def create_server() -> FastMCP:
 
 
 async def async_main(transport: str, host: str, port: int):
-    # Disable logging if using stdio to avoid interfering with MCP comms
+    """Launch the MCP server using the specified transport."""
     if transport == "stdio":
+        # Disable logging if using stdio to avoid interfering with MCP comms
         logger.remove()
         logger.add(lambda _: None)
 
     server = await create_server()
-    logger.info("MCP Server launched with local tools")
+    logger.info("SPEAR STAC MCP Server launched")
+
     if transport == "http":
         await server.run_http_async(host=host, port=port)
     elif transport == "stdio":
@@ -44,7 +49,8 @@ async def async_main(transport: str, host: str, port: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run MCP Server for Local NetCDF Directory")
+    """Command-line entrypoint for running the MCP server."""
+    parser = argparse.ArgumentParser(description="Run SPEAR STAC MCP Server")
     parser.add_argument("--transport", choices=["stdio", "http", "sse"], default="stdio")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
