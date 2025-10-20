@@ -16,7 +16,7 @@ from loguru import logger
 import cftime
 from urllib.parse import urljoin
 
-STAC_BASE = "http://pp009.princeton.rdhpcs.noaa.gov:11624"
+STAC_BASE = "http://pp009.princeton.rdhpcs.noaa.gov:11622"
 COLLECTION_ID = "SPEAR-FLP"
 COLLECTION_URL = f"{STAC_BASE}/collections/{COLLECTION_ID}"
 ITEMS_URL = f"{COLLECTION_URL}/items"
