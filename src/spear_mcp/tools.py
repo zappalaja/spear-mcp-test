@@ -16,7 +16,9 @@ from urllib.parse import urljoin
 warnings.filterwarnings("ignore")
 
 # Base URL for the web portal (localhost or remote)
-BASE_URL = "http://localhost:8000"
+# BASE_URL = "http://localhost:8000" #place holder
+BASE_URL = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP"
+# BASE_URL = "140.208.147.13:11624/collections/SPEAR-FLP" #url second option
 
 
 def safe_serialize(val):
