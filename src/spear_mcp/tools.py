@@ -17,7 +17,11 @@ warnings.filterwarnings("ignore")
 
 # Base URL for the web portal (localhost or remote)
 # BASE_URL = "http://localhost:8000" #place holder
-BASE_URL = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP"
+# BASE_URL = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP"
+STARTING_URL = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP?.language=en&.itemFilterOpen=1" # where the datasets are shown
+BASE_URL = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP/items" # Where the selected files info gets added to the path.
+BASE_URL_AND_ASSET = "pp009.princeton.rdhpcs.noaa.gov:11624/collections/SPEAR-FLP/items" + ITEM_NAME + "?.asset=asset-" + ASSET_NAME #how to access the dropdown off a selected asset.
+# next we need to copy the url of the asset and send it back to the user, as a test to see if navigation is working. then we can try to pull the data.
 # BASE_URL = "140.208.147.13:11624/collections/SPEAR-FLP" #url second option
 
 
