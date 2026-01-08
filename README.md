@@ -1,6 +1,13 @@
 #  Model Context Protocol (MCP) Test Server for Accessing SPEAR Model Output
-An MCP is a standarized form of two-way communication for connecting AI applications to external services, devices and databases.
-This test MCP server is designed for accessing SPEAR output. It has been created and being tested using Claude Desktop.
+Model Context Protocol is a standarized form of two-way communication for connecting AI applications to external services, devices and databases.
+This test MCP server is designed for accessing SPEAR output. There are 3 different 'flavors' of SPEAR MCP server labeled as different branches in this repository. Each branch is catered to a specified SPEAR output location which include AWS hosted, STAC API hosted and local mounted directory hosted files.
+
+The SPEAR MCP server can be utilized in multiple ways. Currently, the most supported method is using the MCP server in parrallel with our Climate Chatbot model. You can find this chatbot here:
+
+https://github.com/zappalaja/spear-climate-chatbot
+
+The MCP servers also work well with and have been tested using Claude Desktop and Claude Code.
+
 This is not intended for operational purposes. Contact through GitHub issues for questions. 
 
 To download Claude Desktop, follow the instructions from this link:
@@ -27,3 +34,15 @@ Configuration in LLM JSON file:
   }
 }
 ```
+
+Claude Code Installation Page:
+
+https://code.claude.com/docs/en/overview
+
+One downloaded in terminal, run this command to connect to the SPEAR MCP server:
+
+```python
+claude mcp add spear_mcp -- /bin/bash -c "cd /path/to/spear-mcp-test && uv run spear-mcp"
+```
+
+To check if you have successfully connected to the server, check with the "/mcp" command.
