@@ -10,6 +10,22 @@ The MCP servers also work well with and have been tested using Claude Desktop an
 
 This is not intended for operational purposes. Contact through GitHub issues for questions. 
 
+# Running the MCP server in terminal
+
+UV will need to be installed in the environment to run the MCP server.
+
+You can download UV from here: https://github.com/astral-sh/uv
+```bash
+# On macOS and Linux. Run this in your chosen MCP env
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+To run the MCP server edit **`start_mcp_server.sh`** as needed, make it executable and run it in terminal:
+```bash
+chmod +x start_mcp_server.sh
+./start_mcp_server.sh
+```
+
 # Claude Desktop Install
 
 To download Claude Desktop, follow the instructions from this link:
