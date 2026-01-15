@@ -10,7 +10,7 @@ The MCP servers also work well with and have been tested using Claude Desktop an
 
 This is not intended for operational purposes. Contact through GitHub issues for questions. 
 
-# Running the MCP server in terminal
+# Running the MCP Server in Terminal
 
 UV will need to be installed in the environment to run the MCP server.
 
