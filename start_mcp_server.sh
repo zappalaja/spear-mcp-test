@@ -26,5 +26,5 @@ fi
 # --------------------------------------------------
 echo "Starting SPEAR MCP server..."
 #exec uv run spear-mcp-test/src/spear_mcp
-cd ~/Bot_Test/spear-mcp-test
+cd ~/your_location/spear-mcp-test # Edit to your location of the spear-mcp-test directory
 uv run python -m spear_mcp
