@@ -6,9 +6,9 @@ import asyncio
 from fastmcp import FastMCP
 from loguru import logger
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, JSONResponse
 
-from . import tools, tools_nc
+from . import tools, tools_nc, tools_zarr
 
 ##############################################################################################
 ##############################################################################################
@@ -123,6 +123,45 @@ async def create_server() -> FastMCP:
     file structure without memory overhead.
     Example: get_s3_file_metadata_only("scenarioSSP5-85", "r15i1p1f1", "Amon", "pr")
     """
+
+    # ========== ZARR TOOLS (CMIP6) ==========
+    mcp.tool()(tools_zarr.test_cmip6_connection)
+    """
+    Test basic S3 connection to CMIP6 Zarr store and return store information.
+    Useful for verifying access to Zarr data on AWS S3.
+    Example: test_cmip6_connection("s3://cmip6-pds/CMIP6/CMIP/NOAA-GFDL/GFDL-CM4/historical/r1i1p1f1/Amon/tas/gr1/v20180701/")
+    """
+
+    mcp.tool()(tools_zarr.get_zarr_store_info)
+    """
+    Get metadata from a CMIP6 Zarr store without loading data arrays.
+    Returns dimensions, coordinates, variables, and attributes.
+    Set include_full_details=True for complete coordinate/variable information.
+    Example: get_zarr_store_info(include_full_details=True)
+    """
+
+    mcp.tool()(tools_zarr.load_zarr_dataset)
+    """
+    Load Zarr dataset with lazy loading - data only downloaded when accessed.
+    Maintains global cache to avoid repeated S3 reads.
+    Example: load_zarr_dataset("s3://cmip6-pds/CMIP6/CMIP/...")
+    """
+
+    mcp.tool()(tools_zarr.query_zarr_data)
+    """
+    Query Zarr data with spatial/temporal subsetting.
+    Main data extraction tool for Zarr stores - handles parameter validation,
+    spatial/temporal slicing, and JSON serialization.
+    Example: query_zarr_data("tas", "1850-01", "1860-12", [30, 50], [-120, -80])
+    """
+
+    mcp.tool()(tools_zarr.get_zarr_summary_statistics)
+    """
+    Get summary statistics (min, max, mean, std) for Zarr data selections
+    without returning full arrays. More efficient than loading all data.
+    Example: get_zarr_summary_statistics("tas", "1850-01", "1860-12", [30, 50], [-120, -80])
+    """
+
     # Future Tools! Coming soon!
     # mcp.tool()(tools_nc.get_catalog_file_metadata_only)
 
@@ -135,6 +174,19 @@ async def create_server() -> FastMCP:
     @mcp.custom_route('/health', methods=['GET'])
     async def health_check(request: Request) -> PlainTextResponse:
         return PlainTextResponse('OK')
+
+    # Expose registered tools as a REST endpoint for the Streamlit UI.
+    @mcp.custom_route('/tools', methods=['GET'])
+    async def list_tools(request: Request) -> JSONResponse:
+        tool_list = []
+        tools = await mcp._tool_manager.list_tools()
+        for t in tools:
+            tool_list.append({
+                "name": t.name,
+                "description": t.description or "",
+                "parameters": t.parameters,
+            })
+        return JSONResponse(tool_list)
 
     return mcp
 
@@ -149,7 +201,11 @@ async def async_main(transport: str, host: str, port: int):
     if transport == 'stdio':
         await server.run_async(transport='stdio')
     elif transport in ['http', 'sse']:
-        await server.run_async(transport=transport, host=host, port=port)
+        # Configure uvicorn with extended timeouts for large S3 data transfers
+        uvicorn_config = {
+            "timeout_keep_alive": 1800,  # 30 minutes keep-alive timeout
+        }
+        await server.run_async(transport=transport, host=host, port=port, uvicorn_config=uvicorn_config)
 
 
 def main():
@@ -159,13 +215,13 @@ def main():
     parser.add_argument(
         '--transport',
         choices=['stdio', 'http', 'sse'],
-        default='stdio',
-        help='Transport protocol to use (default: stdio)',
+        default='sse',
+        help='Transport protocol to use (default: sse for HTTP mode)',
     )
     parser.add_argument(
         '--host',
-        default='127.0.0.1',
-        help='Host to bind to for http/sse transport (default: 127.0.0.1)',
+        default='0.0.0.0',
+        help='Host to bind to for http/sse transport (default: 0.0.0.0 for container access)',
     )
     parser.add_argument(
         '--port',

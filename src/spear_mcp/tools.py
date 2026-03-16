@@ -233,18 +233,30 @@ def _convert_numpy_types(obj):
     else:
         return obj
 
+def _natural_sort_key(s: str):
+    """
+    Generate a sort key for natural sorting (e.g., r1, r2, r10 instead of r1, r10, r2).
+    Handles ensemble member names like r1i1p1f1, r10i1p1f1, etc.
+    """
+    import re
+    # Split string into text and number parts
+    parts = re.split(r'(\d+)', s)
+    # Convert number parts to integers for proper numerical sorting
+    return [int(part) if part.isdigit() else part.lower() for part in parts]
+
+
 def _clean_path(path: str) -> str:
     """Clean and normalize a path string."""
     if not path:
         return ""
-    
+
     # Remove leading/trailing slashes and normalize.
     clean = path.strip("/").replace("\\", "/")
-    
+
     # Remove any double slashes.
     while "//" in clean:
         clean = clean.replace("//", "/")
-    
+
     return clean
 
 def _parse_s3_directory_listing(xml_content: str, current_full_path: str) -> Optional[SPEARNavigationResult]:
@@ -283,8 +295,8 @@ def _parse_s3_directory_listing(xml_content: str, current_full_path: str) -> Opt
         
         return SPEARNavigationResult(
             current_path=relative_path,
-            directories=sorted(directories),
-            files=sorted(files),
+            directories=sorted(directories, key=_natural_sort_key),
+            files=sorted(files, key=_natural_sort_key),
             parent_path=parent_path
         )
         
@@ -324,8 +336,8 @@ def _parse_directory_content(content: str, current_path: str) -> Optional[SPEARN
         
         return SPEARNavigationResult(
             current_path=current_path,
-            directories=sorted(directories),
-            files=sorted(files),
+            directories=sorted(directories, key=_natural_sort_key),
+            files=sorted(files, key=_natural_sort_key),
             parent_path=parent_path
         )
         
